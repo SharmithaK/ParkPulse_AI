@@ -32,18 +32,13 @@ def get_recommendation(score):
             "priority": "Low"
         }
 
-#BULK RECOMMENDATIONS
-
 
 def generate_recommendations(priority_df):
 
     recommendations = []
-
     for _, row in priority_df.iterrows():
 
-        rec = get_recommendation(
-            row["priority_score"]
-        )
+        rec = get_recommendation(row["priority_score"])
 
         recommendations.append({
             "junction_name": row["junction_name"],
@@ -51,7 +46,6 @@ def generate_recommendations(priority_df):
             "risk_level": rec["level"],
             "action": rec["action"],
             "monitoring": rec["monitoring"],
-            "priority": rec["priority"]
-        })
+            "priority": rec["priority"]})
 
     return recommendations

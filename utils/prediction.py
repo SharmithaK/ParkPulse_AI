@@ -6,124 +6,61 @@ from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
 
 
-#TRAIN MODEL
-
-
 def train_prediction_model(df):
 
-    features = [
-        "hour",
-        "vehicle_risk",
-        "location_density",
-        "violation_count",
-        "violation_severity",
-        "vehicle_type",
-        "police_station",
-        "violation_main"
-    ]
+    features =["hour","day","vehicle_risk","violation_count","violation_severity",
+    "is_weekend","is_peak_hour","junction_name","police_station","month"]
 
     X = df[features]
-
     y = df["risk_label"]
 
-    categorical_features = [
-        "vehicle_type",
-        "police_station",
-        "violation_main"
-    ]
+    categorical_features = ["day","month","junction_name","police_station"
+]
 
-    numerical_features = [
-        "hour",
-        "vehicle_risk",
-        "location_density",
-        "violation_count",
-        "violation_severity"
-    ]
+    numerical_features = ["hour","vehicle_risk","violation_count","violation_severity","is_weekend",
+    "is_peak_hour",]
 
-    preprocessor = ColumnTransformer(
-        transformers=[
-            (
-                "cat",
-                OneHotEncoder(
-                    handle_unknown="ignore"
-                ),
-                categorical_features
-            )
-        ],
-        remainder="passthrough"
-    )
+    preprocessor = ColumnTransformer(transformers=[
+            ("cat",OneHotEncoder(handle_unknown="ignore"),categorical_features)],remainder="passthrough")
 
-    model = RandomForestClassifier(
-        n_estimators=100,
-        random_state=42,
-        n_jobs=-1
-    )
+    model = RandomForestClassifier(n_estimators=300,random_state=42,n_jobs=-1,   max_depth=15,
+    min_samples_leaf=5, class_weight="balanced")
 
     pipeline = Pipeline([
         ("preprocessor", preprocessor),
-        ("model", model)
-    ])
+        ("model", model)])
+    from sklearn.model_selection import train_test_split
 
-    print("\n===== MISSING VALUES CHECK =====")
-    print(X.isnull().sum())
+    X_train, X_test, y_train, y_test = train_test_split(X, y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y)
 
-    print("\n===== TARGET CHECK =====")
-    print(y.isnull().sum())
+    pipeline.fit(X_train, y_train)
 
-    pipeline.fit(X, y)
-
+    print("Test Accuracy =", pipeline.score(X_test, y_test))
     return pipeline
 
-#PREDICT HOTSPOT RISK
-
-
-def predict_hotspot_risk(
-model,
-hour,
-vehicle_type,
-vehicle_risk,
-violation_main,
-violation_count,
-violation_severity,
-police_station,
-location_density
-):
+def predict_hotspot_risk(model,hour,vehicle_risk,violation_count,violation_severity,day,month,
+    junction_name,
+    police_station, is_weekend,
+    is_peak_hour):
 
     sample = pd.DataFrame({
-
         "hour": [hour],
-
         "vehicle_risk": [vehicle_risk],
-
-        "location_density": [location_density],
-
+        "day":[day],
+        "month":[month],
         "violation_count": [violation_count],
-
-        "violation_severity": [violation_severity],
-
-        "vehicle_type": [vehicle_type],
-
-        "police_station": [police_station],
-
-        "violation_main": [violation_main]
-
-    })
-
-    prediction = model.predict(sample)[0]
-
-    probability = (
-        model.predict_proba(sample)[0]
-        .max()
-        * 100
-    )
-
-    risk = (
-        "HIGH RISK"
-        if prediction == 1
-        else "LOW RISK"
-    )
+        "violation_severity": [violation_severity],"is_weekend":[is_weekend],
+        "is_peak_hour":[is_peak_hour],
+        "junction_name":[junction_name],
+        "police_station":[police_station]})
+    
+    probs = model.predict_proba(sample)
+    high_risk_probability = probs[0][1]*100
+    
 
     return {
-        "risk": risk,
-        "confidence": round(probability, 2)
+    "high_risk_probability": round(high_risk_probability, 2)
     }

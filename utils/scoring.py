@@ -1,120 +1,63 @@
 import pandas as pd
+import numpy as np
 from sklearn.preprocessing import MinMaxScaler
-
-
-#CALCULATE PRIORITY SCORE
 
 def compute_priority_scores(df):
 
-# Aggregate by junction
-
     priority = (
-        df.groupby("junction_name")
+        df[(df["junction_name"] != "No Junction")&(df["junction_name"].notna())
+        ].groupby("junction_name")
         .agg(
             total_violations=("id", "count"),
             avg_vehicle_risk=("vehicle_risk", "mean"),
             avg_severity=("violation_severity", "mean"),
-            location_density=("location_density", "mean")
-        )
-        .reset_index()
-    )
+        ).reset_index())
 
-# -----------------------------------------
-# Normalize metrics
-# -----------------------------------------
+    priority["log_violations"] = np.log1p(priority["total_violations"])
 
     scaler = MinMaxScaler()
 
-    priority[
-        [
-            "violations_norm",
-            "vehicle_risk_norm",
-            "severity_norm",
-            "density_norm"
-        ]
-    ] = scaler.fit_transform(
+    priority[["violations_norm","vehicle_risk_norm","severity_norm",]] = scaler.fit_transform(
         priority[
-            [
-                "total_violations",
-                "avg_vehicle_risk",
-                "avg_severity",
-                "location_density"
-            ]
-        ]
-    )
+            ["log_violations","avg_vehicle_risk","avg_severity",]])
+    
 
-# -----------------------------------------
-# AI Priority Score
-#
-# 40% violation volume
-# 25% vehicle risk
-# 20% location density
-# 15% severity
-# -----------------------------------------
+    priority["priority_score"] = (priority["violations_norm"] * 80 + priority["severity_norm"] * 15 +priority["vehicle_risk_norm"] * 5)
+    priority["priority_score"] = (priority["priority_score"]/ priority["priority_score"].max()) * 100
 
-    priority["priority_score"] = (
 
-        priority["violations_norm"] * 40 +
+    priority["priority_score"] = (priority["priority_score"].round(2))
 
-        priority["vehicle_risk_norm"] * 25 +
-
-        priority["density_norm"] * 20 +
-
-        priority["severity_norm"] * 15
-
-    )
-
-    priority["priority_score"] = (
-        priority["priority_score"]
-        .round(2)
-    )
-
-    return priority.sort_values(
-        "priority_score",
-        ascending=False
-    )
-
-#MAP SCORES BACK TO ROW LEVEL
+    return priority.sort_values("priority_score",ascending=False)
 
 
 def attach_priority_scores(df, priority_df):
 
-    score_map = dict(
-        zip(
-            priority_df["junction_name"],
-            priority_df["priority_score"]
-        )
-    )
+    score_map = dict(zip( priority_df["junction_name"],priority_df["priority_score"]))
+    violation_map = dict(zip(priority_df["junction_name"], priority_df["total_violations"]))
+    severity_map = dict(zip(priority_df["junction_name"],priority_df["avg_severity"]))
+    vehicle_map = dict( zip(priority_df["junction_name"],priority_df["avg_vehicle_risk"]))
 
-    df["priority_score"] = (
-        df["junction_name"]
-        .map(score_map)
-    )
-
+    df["priority_score"] = (df["junction_name"].map(score_map).fillna(0))
+    df["junction_total_violations"] = (df["junction_name"].map(violation_map).fillna(0))
+    df["junction_avg_severity"] = (df["junction_name"].map(severity_map).fillna(0))
+    df["junction_avg_vehicle_risk"] = (df["junction_name"].map(vehicle_map).fillna(0))
     return df
 
-#CREATE RISK LABEL
 
-def create_risk_label(df):
+def create_risk_label(df,priority_df):
 
-    df["risk_label"] = (
-        df["priority_score"] >= 70
-    ).astype(int)
+    threshold = priority_df["priority_score"].quantile(0.75)
 
+    df["risk_label"] = ( df["priority_score"] >= threshold).astype(int)
     return df
-
-#COMPLETE AI SCORING PIPELINE
 
 
 def scoring_pipeline(df):
 
     priority_df = compute_priority_scores(df)
 
-    df = attach_priority_scores(
-        df,
-        priority_df
-    )
-
-    df = create_risk_label(df)
+    df = attach_priority_scores(df, priority_df)
+    df = create_risk_label(df,priority_df)
 
     return df, priority_df
