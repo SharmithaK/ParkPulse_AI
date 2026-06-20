@@ -1,4 +1,6 @@
 import streamlit as st
+import os
+import gdown
 from datetime import datetime
 from utils.preprocessing import (load_raw_data,preprocess_pipeline)
 from utils.scoring import (scoring_pipeline)
@@ -12,7 +14,15 @@ st.caption("AI-powered Parking Hotspot Detection & Enforcement Intelligence Syst
 
 @st.cache_data
 def load_data():
-    df = load_raw_data("data/jan to may police violation_anonymized791b166.csv")
+    if not os.path.exists("jan to may police violation_anonymized791b166.csv"):
+        file_id = "1w9DCIdNxUFbba4srX3Ukf_OmhVhOolzu"
+        gdown.download(
+            f"https://drive.google.com/uc?id={file_id}",
+            "jan to may police violation_anonymized791b166.csv",
+            quiet=False
+        )
+
+    df = load_raw_data("jan to may police violation_anonymized791b166.csv")
     df = preprocess_pipeline(df)
     df, priority_df = scoring_pipeline(df)
     return df, priority_df
