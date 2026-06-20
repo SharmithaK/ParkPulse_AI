@@ -177,8 +177,9 @@ ParkPulseAI
 │   ├── scoring.py
 │   ├── prediction.py
 │   └── recommendation.py
-│
+│── requirement.txt
 └── README.md
+
 ```
 
 ---
