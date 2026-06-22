@@ -1,7 +1,7 @@
 # ParkPulseAI
 
 ### AI-Powered Parking Hotspot Detection & Enforcement Intelligence System
-TriVars: Sharmitha K, M Aashritha, Priyadharshini Bai B
+TriVars
 ## Overview
 
 ParkPulseAI is an AI-driven parking intelligence platform designed to identify illegal parking hotspots, analyze parking violation patterns, predict future risk, and recommend targeted enforcement strategies.
