@@ -81,7 +81,9 @@ elif page == "Time Pattern Analysis":
     st.line_chart( df.groupby("hour").size())
 
     st.subheader("Daily Violations")
-    st.bar_chart( df["day"].value_counts())
+    st.bar_chart(
+    df.loc[df["day"] != "Unknown", "day"].value_counts()
+)
 
     st.subheader("Monthly Violations")
     st.bar_chart( df["month"].value_counts())
